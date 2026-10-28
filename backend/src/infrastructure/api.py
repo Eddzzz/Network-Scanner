@@ -1,5 +1,6 @@
 ﻿from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi import BackgroundTasks
 from pydantic import BaseModel
 from typing import Optional
 from dataclasses import asdict
@@ -14,12 +15,14 @@ if src_dir not in sys.path:
 
 from application.services import NetworkScanService
 from infrastructure.nmap_adapter import NmapAdapter
+from infrastructure.history_api import archive_scan, router as history_router
 
 app = FastAPI(title="Network Scanner API", version="1.0.0")
+app.include_router(history_router)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -52,12 +55,12 @@ def root():
     }
 
 @app.post("/api/scan/network")
-def scan_network(request: ScanRequest):
+def scan_network(request: ScanRequest, background_tasks: BackgroundTasks):
     try:
         scan_type = request.scan_type or "quick"
         result = scan_service.execute_network_scan(request.network_range, scan_type)
         
-        return {
+        response = {
             "success": True,
             "data": {
                 "scan_id": result.scan_id,
@@ -90,15 +93,16 @@ def scan_network(request: ScanRequest):
                 ]
             }
         }
+        return archive_scan(response, "network", request.network_range, background_tasks)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/scan/host")
-def scan_host(request: HostScanRequest):
+def scan_host(request: HostScanRequest, background_tasks: BackgroundTasks):
     try:
         result = scan_service.execute_host_scan(request.ip)
         
-        return {
+        response = {
             "success": True,
             "data": {
                 "ip": result.ip,
@@ -119,15 +123,16 @@ def scan_host(request: HostScanRequest):
                 ]
             }
         }
+        return archive_scan(response, "host", request.ip, background_tasks)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/scan/discover")
-def discover_hosts(request: ScanRequest):
+def discover_hosts(request: ScanRequest, background_tasks: BackgroundTasks):
     try:
         hosts = scan_service.discover_network_hosts(request.network_range)
         
-        return {
+        response = {
             "success": True,
             "data": {
                 "network_range": request.network_range,
@@ -135,16 +140,17 @@ def discover_hosts(request: ScanRequest):
                 "hosts": hosts
             }
         }
+        return archive_scan(response, "discover", request.network_range, background_tasks)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/api/scan/wireless")
-def scan_wireless(request: WirelessScanRequest):
+def scan_wireless(request: WirelessScanRequest, background_tasks: BackgroundTasks):
     try:
         result = scan_service.execute_wireless_scan(request.network_range)
 
-        return {
+        response = {
             "success": True,
             "data": {
                 "network_range": result.network_range,
@@ -173,6 +179,7 @@ def scan_wireless(request: WirelessScanRequest):
                 ]
             }
         }
+        return archive_scan(response, "wireless", request.network_range or "192.168.1.0/24", background_tasks)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
