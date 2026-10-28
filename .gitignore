@@ -10,3 +10,5 @@ dist/
 Thumbs.db
 backend/data/
 backend/.env
+.venv312/
+.impeccable/review/

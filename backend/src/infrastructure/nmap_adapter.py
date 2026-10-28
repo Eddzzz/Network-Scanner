@@ -131,7 +131,7 @@ class NmapAdapter(NetworkScannerPort):
         host_info = self.scanner[host_ip]
         
         # IMPORTANTE: Obtener el estado del host
-        state = host_info.get('state', {}).get('state', 'unknown')
+        state = host_info.get('status', {}).get('state', 'unknown')
         
         # Debug: mostrar información del host
         print(f"  Parseando {host_ip}:")
@@ -208,9 +208,13 @@ class NmapAdapter(NetworkScannerPort):
                     ["netsh", "wlan", "show", "networks", "mode=bssid"],
                     capture_output=True,
                     text=True,
-                    timeout=20,
-                    check=True
+                    timeout=20
                 )
+                output = result.stdout.lower()
+                if "permiso de ubicaci" in output or "location permission" in output:
+                    raise RuntimeError("Activa el permiso de ubicación de Windows para consultar las redes Wi-Fi.")
+                if result.returncode:
+                    raise subprocess.CalledProcessError(result.returncode, result.args, result.stdout, result.stderr)
                 networks = self._parse_netsh_networks(result.stdout)
             else:
                 result = subprocess.run(

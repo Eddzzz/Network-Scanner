@@ -7,8 +7,8 @@ start cmd /k "%~dp0start-frontend.bat"
 echo.
 echo Aplicacion iniciada
 echo.
-echo Backend:  http://localhost:8000
+echo Backend:  http://localhost:8065
 echo Frontend: http://localhost:3000
-echo Docs:     http://localhost:8000/docs
+echo Docs:     http://localhost:8065/docs
 echo.
 pause
